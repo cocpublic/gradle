@@ -64,7 +64,7 @@ public abstract class GroovyPlugin implements Plugin<Project> {
     }
 
     private void configureCompileDefaults(final Project project) {
-        DefaultJavaPluginExtension javaExtension = project.getExtensions().getByType(DefaultJavaPluginExtension.class);
+        DefaultJavaPluginExtension javaExtension = (DefaultJavaPluginExtension) project.getExtensions().getByType(JavaPluginExtension.class);
         project.getTasks().withType(GroovyCompile.class).configureEach(compile -> {
             ConventionMapping conventionMapping = compile.getConventionMapping();
             conventionMapping.map("sourceCompatibility", () -> computeSourceCompatibilityConvention(javaExtension, compile).toString());
