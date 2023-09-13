@@ -16,9 +16,11 @@
 
 package org.gradle.jvm.component.internal;
 
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.ConsumableConfiguration;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Usage;
@@ -28,9 +30,13 @@ import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePlugin;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.plugins.JavaResolutionConsistency;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.plugins.internal.JavaConfigurationVariantMapping;
+import org.gradle.api.plugins.internal.JavaPluginHelper;
+import org.gradle.api.plugins.jvm.JvmTestSuite;
 import org.gradle.api.plugins.jvm.internal.DefaultJvmFeature;
 import org.gradle.api.plugins.jvm.internal.JvmFeatureInternal;
 import org.gradle.api.plugins.jvm.internal.JvmPluginServices;
@@ -185,5 +191,70 @@ public class DefaultJvmSoftwareComponent extends DefaultAdhocSoftwareComponent i
     @Override
     public JvmFeatureInternal getMainFeature() {
         return mainFeature;
+    }
+
+    @Override
+    public void consistentResolution(Action<? super JavaResolutionConsistency> action, Project project) {
+        action.execute(new DefaultJavaResolutionConsistency(project, project.getExtensions().getByType(SourceSetContainer.class), project.getConfigurations()));
+    }
+
+    static class DefaultJavaResolutionConsistency implements JavaResolutionConsistency {
+        private final Configuration mainCompileClasspath;
+        private final Configuration mainRuntimeClasspath;
+        private final Configuration testCompileClasspath;
+        private final Configuration testRuntimeClasspath;
+        private final SourceSetContainer sourceSets;
+        private final ConfigurationContainer configurations;
+
+        @Inject
+        public DefaultJavaResolutionConsistency(Project project, SourceSetContainer sourceSets, ConfigurationContainer configurations) {
+            this.sourceSets = sourceSets;
+            this.configurations = configurations;
+
+            if (project.getPlugins().hasPlugin(JavaPlugin.class)) {
+                JvmFeatureInternal mainFeature = JavaPluginHelper.getJavaComponent(project).getMainFeature();
+                JvmTestSuite defaultTestSuite = JavaPluginHelper.getDefaultTestSuite(project);
+
+                mainCompileClasspath = mainFeature.getCompileClasspathConfiguration();
+                mainRuntimeClasspath = mainFeature.getRuntimeClasspathConfiguration();
+                testCompileClasspath = findConfiguration(defaultTestSuite.getSources().getCompileClasspathConfigurationName());
+                testRuntimeClasspath = findConfiguration(defaultTestSuite.getSources().getRuntimeClasspathConfigurationName());
+            } else {
+                SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+                SourceSet testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+                mainCompileClasspath = findConfiguration(mainSourceSet.getCompileClasspathConfigurationName());
+                mainRuntimeClasspath = findConfiguration(mainSourceSet.getRuntimeClasspathConfigurationName());
+                testCompileClasspath = findConfiguration(testSourceSet.getCompileClasspathConfigurationName());
+                testRuntimeClasspath = findConfiguration(testSourceSet.getRuntimeClasspathConfigurationName());
+            }
+        }
+
+        @Override
+        public void useCompileClasspathVersions() {
+            sourceSets.configureEach(this::applyCompileClasspathConsistency);
+            testCompileClasspath.shouldResolveConsistentlyWith(mainCompileClasspath);
+        }
+
+        @Override
+        public void useRuntimeClasspathVersions() {
+            sourceSets.configureEach(this::applyRuntimeClasspathConsistency);
+            testRuntimeClasspath.shouldResolveConsistentlyWith(mainRuntimeClasspath);
+        }
+
+        private void applyCompileClasspathConsistency(SourceSet sourceSet) {
+            Configuration compileClasspath = findConfiguration(sourceSet.getCompileClasspathConfigurationName());
+            Configuration runtimeClasspath = findConfiguration(sourceSet.getRuntimeClasspathConfigurationName());
+            runtimeClasspath.shouldResolveConsistentlyWith(compileClasspath);
+        }
+
+        private void applyRuntimeClasspathConsistency(SourceSet sourceSet) {
+            Configuration compileClasspath = findConfiguration(sourceSet.getCompileClasspathConfigurationName());
+            Configuration runtimeClasspath = findConfiguration(sourceSet.getRuntimeClasspathConfigurationName());
+            compileClasspath.shouldResolveConsistentlyWith(runtimeClasspath);
+        }
+
+        private Configuration findConfiguration(String configName) {
+            return configurations.getByName(configName);
+        }
     }
 }

@@ -16,7 +16,10 @@
 
 package org.gradle.jvm.component.internal;
 
+import org.gradle.api.Action;
+import org.gradle.api.Project;
 import org.gradle.api.component.SoftwareComponent;
+import org.gradle.api.plugins.JavaResolutionConsistency;
 import org.gradle.api.plugins.jvm.internal.JvmFeatureInternal;
 
 /**
@@ -60,4 +63,5 @@ public interface JvmSoftwareComponentInternal extends SoftwareComponent {
      */
     JvmFeatureInternal getMainFeature();
 
+    void consistentResolution(Action<? super JavaResolutionConsistency> action, Project project);
 }
