@@ -20,14 +20,14 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.internal.tasks.JvmConstants;
-import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.jvm.JvmTestSuite;
 import org.gradle.jvm.component.internal.JvmSoftwareComponentInternal;
 import org.gradle.testing.base.TestSuite;
 import org.gradle.testing.base.TestingExtension;
 
 /**
- * Utility class intended for use only when the {@link JavaPlugin} is applied.
+ * Utility class intended for use only when the {@link JavaBasePlugin} is applied.
  *
  * This class exists to avoid adding these methods to the {@code JavaPlugin} itself,
  * and thus avoids adding these methods to the public API.
