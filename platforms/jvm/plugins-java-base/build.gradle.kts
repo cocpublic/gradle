@@ -25,7 +25,10 @@ dependencies {
     implementation(project(":core-api"))
     implementation(project(":core"))
     implementation(project(":dependency-management"))
+    implementation(project(":diagnostics"))
+    implementation(project(":execution"))
     implementation(project(":file-collections"))
+    implementation(project(":language-groovy"))
     implementation(project(":language-java"))
     implementation(project(":language-jvm"))
     implementation(project(":logging"))
@@ -43,9 +46,16 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.inject)
 
+    testImplementation(testFixtures(project(":core")))
+
+    testRuntimeOnly(project(":distributions-jvm")) {
+        because("Tests create GlobalServices.")
+    }
     integTestDistributionRuntimeOnly(project(":distributions-jvm"))
 }
 
 packageCycles {
     excludePatterns.add("org/gradle/api/plugins/**")
 }
+
+integTest.usesJavadocCodeSnippets.set(true)
