@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 the original author or authors.
+ * Copyright 2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -471,10 +471,11 @@ public abstract class CompileOptions extends AbstractOptions {
      * <p>
      * If set, it will take precedences over the {@link AbstractCompile#getSourceCompatibility()} and {@link AbstractCompile#getTargetCompatibility()} settings.
      * <p>
-     * This option is only taken into account by the {@link JavaCompile} task.
+     * This option is only taken into account by the {@link org.gradle.api.tasks.compile.JavaCompile} task.
      *
      * @since 6.6
      */
+    @SuppressWarnings("JavadocReference")
     @Input
     @Optional
     public Property<Integer> getRelease() {
