@@ -198,7 +198,7 @@ public class DefaultJvmSoftwareComponent extends DefaultAdhocSoftwareComponent i
         action.execute(new DefaultJavaResolutionConsistency(project, project.getExtensions().getByType(SourceSetContainer.class), project.getConfigurations()));
     }
 
-    static class DefaultJavaResolutionConsistency implements JavaResolutionConsistency {
+    private static class DefaultJavaResolutionConsistency implements JavaResolutionConsistency {
         private final Configuration mainCompileClasspath;
         private final Configuration mainRuntimeClasspath;
         private final Configuration testCompileClasspath;
