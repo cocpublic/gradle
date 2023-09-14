@@ -254,12 +254,10 @@ public class DefaultJavaPluginExtension implements JavaPluginExtension {
     public void consistentResolution(Action<? super JavaResolutionConsistency> action) {
         maybeEmitMissingJavaComponentDeprecation("consistentResolution(Action)");
 
-        project.getComponents().configureEach(component -> {
-            if (component instanceof JvmSoftwareComponentInternal) {
-                JvmSoftwareComponentInternal javaComponent = (JvmSoftwareComponentInternal) component;
-                javaComponent.consistentResolution(action, project);
-            }
-        });
+        JvmSoftwareComponentInternal javaComponent = (JvmSoftwareComponentInternal) project.getComponents().findByName(JvmConstants.JAVA_COMPONENT_NAME);
+        if (null != javaComponent) {
+            javaComponent.consistentResolution(action, project);
+        }
     }
 
     private static String validateFeatureName(String name) {
