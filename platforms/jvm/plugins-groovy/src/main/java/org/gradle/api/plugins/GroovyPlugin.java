@@ -20,12 +20,11 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.SourceDirectorySet;
-import org.gradle.api.internal.ConventionMapping;
 import org.gradle.api.plugins.internal.DefaultJavaPluginExtension;
 import org.gradle.api.plugins.internal.JavaPluginHelper;
+import org.gradle.api.plugins.internal.JvmPluginsHelper;
 import org.gradle.api.plugins.jvm.internal.JvmFeatureInternal;
 import org.gradle.api.tasks.GroovySourceDirectorySet;
-import org.gradle.api.tasks.compile.AbstractCompile;
 import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.javadoc.Groovydoc;
 
@@ -45,8 +44,8 @@ public abstract class GroovyPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(GroovyBasePlugin.class);
         project.getPluginManager().apply(JavaPlugin.class);
-        configureGroovydoc(project);
 
+        configureGroovydoc(project);
         configureCompileDefaults(project);
     }
 
@@ -66,33 +65,12 @@ public abstract class GroovyPlugin implements Plugin<Project> {
     private void configureCompileDefaults(final Project project) {
         DefaultJavaPluginExtension javaExtension = (DefaultJavaPluginExtension) project.getExtensions().getByType(JavaPluginExtension.class);
         project.getTasks().withType(GroovyCompile.class).configureEach(compile -> {
-            ConventionMapping conventionMapping = compile.getConventionMapping();
-            conventionMapping.map("sourceCompatibility", () -> computeSourceCompatibilityConvention(javaExtension, compile).toString());
-            conventionMapping.map("targetCompatibility", () -> computeTargetCompatibilityConvention(javaExtension, compile).toString());
+            JvmPluginsHelper.configureCompileDefaults(compile, javaExtension, (@Nullable JavaVersion rawConvention, Supplier<JavaVersion> javaVersionSupplier) -> {
+                if (rawConvention != null) {
+                    return rawConvention;
+                }
+                return JavaVersion.toVersion(compile.getJavaLauncher().get().getMetadata().getLanguageVersion().toString());
+            });
         });
-    }
-
-    private static JavaVersion computeSourceCompatibilityConvention(DefaultJavaPluginExtension javaExtension, AbstractCompile compileTask) {
-        return computeCompatibilityConvention(compileTask, javaExtension.getRawSourceCompatibility(), javaExtension::getSourceCompatibility);
-    }
-
-    private static JavaVersion computeTargetCompatibilityConvention(DefaultJavaPluginExtension javaExtension, AbstractCompile compileTask) {
-        JavaVersion rawTargetCompatibility = javaExtension.getRawTargetCompatibility();
-        if (rawTargetCompatibility == null) {
-            rawTargetCompatibility = JavaVersion.toVersion(compileTask.getSourceCompatibility());
-        }
-        return computeCompatibilityConvention(compileTask, rawTargetCompatibility, javaExtension::getTargetCompatibility);
-    }
-
-    private static JavaVersion computeCompatibilityConvention(AbstractCompile compile, @Nullable JavaVersion rawConvention, Supplier<JavaVersion> javaVersionSupplier) {
-        if (compile instanceof GroovyCompile) {
-            GroovyCompile groovyCompile = (GroovyCompile) compile;
-            if (rawConvention != null) {
-                return rawConvention;
-            }
-            return JavaVersion.toVersion(groovyCompile.getJavaLauncher().get().getMetadata().getLanguageVersion().toString());
-        }
-
-        return javaVersionSupplier.get();
     }
 }

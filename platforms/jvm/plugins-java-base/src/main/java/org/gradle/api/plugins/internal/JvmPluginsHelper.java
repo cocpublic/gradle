@@ -15,6 +15,7 @@
  */
 package org.gradle.api.plugins.internal;
 
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.AttributeContainer;
@@ -49,6 +50,8 @@ import org.gradle.language.base.plugins.LifecycleBasePlugin;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import static org.gradle.util.internal.TextUtil.camelToKebabCase;
 
@@ -135,7 +138,7 @@ public class JvmPluginsHelper {
         Object artifactSource,
         ProjectInternal project
     ) {
-        @SuppressWarnings("deprecation") Configuration variant = project.getConfigurations().maybeCreateMigratingUnlocked(variantName, ConfigurationRolesForMigration.CONSUMABLE_DEPENDENCY_SCOPE_TO_CONSUMABLE);
+        Configuration variant = project.getConfigurations().maybeCreateMigratingUnlocked(variantName, ConfigurationRolesForMigration.CONSUMABLE_DEPENDENCY_SCOPE_TO_CONSUMABLE);
         variant.setVisible(false);
         variant.setDescription(docsType + " elements for " + (featureName == null ? "main" : featureName) + ".");
 
@@ -167,4 +170,29 @@ public class JvmPluginsHelper {
         return variant;
     }
 
+    /**
+     * Configures the compile task to use the proper source and target compatibility conventions.
+     *
+     * @param compile The compile task to configure
+     * @param javaExtension The java extension containing the raw source and target compatibility values
+     * @param compatibilityComputer A function to compute the compatibility version to use as the convention
+     *      given the raw version values and the current version property values set on the extension
+     */
+    public static void configureCompileDefaults(AbstractCompile compile, DefaultJavaPluginExtension javaExtension, BiFunction<JavaVersion, Supplier<JavaVersion>, JavaVersion> compatibilityComputer) {
+        ConventionMapping conventionMapping = compile.getConventionMapping();
+        conventionMapping.map("sourceCompatibility", () -> computeSourceCompatibilityConvention(javaExtension, compatibilityComputer).toString());
+        conventionMapping.map("targetCompatibility", () -> computeTargetCompatibilityConvention(javaExtension, compile, compatibilityComputer).toString());
+    }
+
+    private static JavaVersion computeSourceCompatibilityConvention(DefaultJavaPluginExtension javaExtension, BiFunction<JavaVersion, Supplier<JavaVersion>, JavaVersion> compatibilityComputer) {
+        return compatibilityComputer.apply(javaExtension.getRawSourceCompatibility(), javaExtension::getSourceCompatibility);
+    }
+
+    private static JavaVersion computeTargetCompatibilityConvention(DefaultJavaPluginExtension javaExtension, AbstractCompile compile, BiFunction<JavaVersion, Supplier<JavaVersion>, JavaVersion> compatibilityComputer) {
+        JavaVersion rawTargetCompatibility = javaExtension.getRawTargetCompatibility();
+        if (rawTargetCompatibility == null) {
+            rawTargetCompatibility = JavaVersion.toVersion(compile.getSourceCompatibility());
+        }
+        return compatibilityComputer.apply(rawTargetCompatibility, javaExtension::getTargetCompatibility);
+    }
 }

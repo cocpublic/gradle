@@ -63,5 +63,12 @@ public interface JvmSoftwareComponentInternal extends SoftwareComponent {
      */
     JvmFeatureInternal getMainFeature();
 
+    /**
+     * Sets consistent resolution for this component, this ensures that the runtime classpath of the component
+     * uses the same version of dependencies as the compile classpath.
+     *
+     * @param action the action to configure the consistency
+     * @param project the project containing the component for which to enable consistent resolution
+     */
     void consistentResolution(Action<? super JavaResolutionConsistency> action, Project project);
 }

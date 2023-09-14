@@ -305,39 +305,21 @@ public abstract class JavaBasePlugin implements Plugin<Project> {
 
     private void configureCompileDefaults(final Project project, final DefaultJavaPluginExtension javaExtension) {
         project.getTasks().withType(AbstractCompile.class).configureEach(compile -> {
-            ConventionMapping conventionMapping = compile.getConventionMapping();
-            conventionMapping.map("sourceCompatibility", () -> computeSourceCompatibilityConvention(javaExtension, compile).toString());
-            conventionMapping.map("targetCompatibility", () -> computeTargetCompatibilityConvention(javaExtension, compile).toString());
+            JvmPluginsHelper.configureCompileDefaults(compile, javaExtension, (@Nullable JavaVersion rawConvention, Supplier<JavaVersion> javaVersionSupplier) -> {
+                if (compile instanceof JavaCompile) {
+                    JavaCompile javaCompile = (JavaCompile) compile;
+                    if (javaCompile.getOptions().getRelease().isPresent()) {
+                        return JavaVersion.toVersion(javaCompile.getOptions().getRelease().get());
+                    }
+                    if (rawConvention != null) {
+                        return rawConvention;
+                    }
+                    return JavaVersion.toVersion(javaCompile.getJavaCompiler().get().getMetadata().getLanguageVersion().toString());
+                }
 
-            compile.getDestinationDirectory().convention(project.getProviders().provider(new BackwardCompatibilityOutputDirectoryConvention(compile)));
+                return javaVersionSupplier.get();
+            });
         });
-    }
-
-    private static JavaVersion computeSourceCompatibilityConvention(DefaultJavaPluginExtension javaExtension, AbstractCompile compileTask) {
-        return computeCompatibilityConvention(compileTask, javaExtension.getRawSourceCompatibility(), javaExtension::getSourceCompatibility);
-    }
-
-    private static JavaVersion computeTargetCompatibilityConvention(DefaultJavaPluginExtension javaExtension, AbstractCompile compileTask) {
-        JavaVersion rawTargetCompatibility = javaExtension.getRawTargetCompatibility();
-        if (rawTargetCompatibility == null) {
-            rawTargetCompatibility = JavaVersion.toVersion(compileTask.getSourceCompatibility());
-        }
-        return computeCompatibilityConvention(compileTask, rawTargetCompatibility, javaExtension::getTargetCompatibility);
-    }
-
-    private static JavaVersion computeCompatibilityConvention(AbstractCompile compile, @Nullable JavaVersion rawConvention, Supplier<JavaVersion> javaVersionSupplier) {
-        if (compile instanceof JavaCompile) {
-            JavaCompile javaCompile = (JavaCompile) compile;
-            if (javaCompile.getOptions().getRelease().isPresent()) {
-                return JavaVersion.toVersion(javaCompile.getOptions().getRelease().get());
-            }
-            if (rawConvention != null) {
-                return rawConvention;
-            }
-            return JavaVersion.toVersion(javaCompile.getJavaCompiler().get().getMetadata().getLanguageVersion().toString());
-        }
-
-        return javaVersionSupplier.get();
     }
 
     private void configureJavaDoc(final Project project, final JavaPluginExtension javaPluginExtension) {
