@@ -21,7 +21,7 @@ dependencies {
     pluginsRuntimeOnly(project(":plugins-java"))
     pluginsRuntimeOnly(project(":plugins-jvm-test-suite"))
     pluginsRuntimeOnly(project(":plugins-jvm-test-suite-base"))
-    pluginsRuntimeOnly(project(":scala"))
+    pluginsRuntimeOnly(project(":plugins-scala"))
     pluginsRuntimeOnly(project(":war"))
 
     pluginsRuntimeOnly(project(":java-platform")) {

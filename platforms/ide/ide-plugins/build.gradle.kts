@@ -39,7 +39,7 @@ dependencies {
     implementation(project(":plugins-java"))
     implementation(project(":plugins-jvm-test-suite"))
     implementation(project(":plugins-jvm-test-suite-base"))
-    implementation(project(":scala"))
+    implementation(project(":plugins-scala"))
     implementation(project(":testing-base"))
     implementation(project(":tooling-api"))
     implementation(project(":war"))

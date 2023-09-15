@@ -700,6 +700,13 @@
     "crossVersionTests": false
   },
   {
+    "name": "plugins-scala",
+    "path": "platforms/jvm/plugins-scala",
+    "unitTests": true,
+    "functionalTests": true,
+    "crossVersionTests": false
+  },
+  {
     "name": "precondition-tester",
     "path": "subprojects/precondition-tester",
     "unitTests": true,
@@ -773,13 +780,6 @@
     "name": "samples",
     "path": "subprojects/samples",
     "unitTests": false,
-    "functionalTests": true,
-    "crossVersionTests": false
-  },
-  {
-    "name": "scala",
-    "path": "subprojects/scala",
-    "unitTests": true,
     "functionalTests": true,
     "crossVersionTests": false
   },

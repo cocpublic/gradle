@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":platform-jvm"))
     implementation(project(":language-jvm"))
     implementation(project(":language-java"))
-    implementation(project(":scala"))
+    implementation(project(":plugins-scala"))
     implementation(project(":ear"))
     implementation(project(":war"))
     implementation(project(":tooling-api"))
