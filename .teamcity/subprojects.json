@@ -681,8 +681,8 @@
   {
     "name": "plugins-java",
     "path": "platforms/jvm/plugins-java",
-    "unitTests": false,
-    "functionalTests": false,
+    "unitTests": true,
+    "functionalTests": true,
     "crossVersionTests": false
   },
   {

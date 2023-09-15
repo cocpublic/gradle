@@ -33,6 +33,20 @@ dependencies {
     implementation(libs.groovy)
     implementation(libs.guava)
     implementation(libs.inject)
+
+    testFixturesImplementation(project(":internal-integ-testing"))
+    testFixturesImplementation(project(":logging"))
+
+    testImplementation(testFixtures(project(":core")))
+
+    integTestImplementation(testFixtures(project(":enterprise-operations")))
+    integTestImplementation(testFixtures(project(":language-java")))
+    integTestImplementation(testFixtures(project(":language-jvm")))
+    integTestImplementation(testFixtures(project(":plugins-java-base")))
+    integTestImplementation(testFixtures(project(":workers")))
+
+    testRuntimeOnly(project(":distributions-jvm"))
+    integTestDistributionRuntimeOnly(project(":distributions-jvm"))
 }
 
 packageCycles {

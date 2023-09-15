@@ -24,6 +24,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
 import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.internal.ConventionMapping;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.internal.file.FileTreeInternal;
 import org.gradle.api.internal.file.temp.TemporaryFileProvider;
@@ -102,6 +103,9 @@ public abstract class GroovyCompile extends AbstractCompile implements HasCompil
             this.astTransformationClasspath.from((Callable<FileCollection>) this::getClasspath);
         }
         CompilerForkUtils.doNotCacheIfForkingViaExecutable(compileOptions, getOutputs());
+
+        ConventionMapping conventionMapping = getConventionMapping();
+        conventionMapping.map("sourceCompatibility", () -> JavaVersion.toVersion(getJavaLauncher().get().getMetadata().getLanguageVersion().toString()));
     }
 
     @Override

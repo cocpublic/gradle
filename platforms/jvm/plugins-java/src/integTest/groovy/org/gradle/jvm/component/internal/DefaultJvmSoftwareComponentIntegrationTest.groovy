@@ -198,6 +198,36 @@ class DefaultJvmSoftwareComponentIntegrationTest extends AbstractIntegrationSpec
         succeeds "verify"
     }
 
+    def "can not registerFeature with multiple component instances"() {
+        given:
+        buildKotlinFile << """
+            plugins {
+                id("java-base")
+            }
+
+            ${factoryRegistrationKotlin()}
+
+            sourceSets {
+                val custom by registering
+            }
+
+            components {
+                create<JvmSoftwareComponentInternal>("module")
+                create<JvmSoftwareComponentInternal>("thing")
+            }
+
+            java {
+                registerFeature("myFeature") {
+                    usingSourceSet(sourceSets["custom"])
+                }
+            }
+        """
+
+        expect:
+        fails "tasks"
+        result.assertHasErrorOutput("Can not register feature 'myFeature'.  Can not register features using the java extension if multiple jvm components are present.  These components were found: 'module, thing'.")
+    }
+
     private static final String factoryRegistrationGroovy() {
         """
             ${importStatements()}

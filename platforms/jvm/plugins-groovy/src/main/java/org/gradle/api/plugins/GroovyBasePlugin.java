@@ -81,7 +81,7 @@ public abstract class GroovyBasePlugin implements Plugin<Project> {
         configureGroovydoc(project, groovyRuntime);
     }
 
-    private static void configureCompileDefaults(Project project, GroovyRuntime groovyRuntime) {
+    private void configureCompileDefaults(Project project, GroovyRuntime groovyRuntime) {
         project.getTasks().withType(GroovyCompile.class).configureEach(compile ->
             compile.getConventionMapping().map(
                 "groovyClasspath",

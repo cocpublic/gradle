@@ -29,6 +29,8 @@ dependencies {
 
     testRuntimeOnly(project(":distributions-jvm"))
 
+    integTestImplementation(testFixtures(project(":plugins-java-base")))
+
     integTestDistributionRuntimeOnly(project(":distributions-jvm"))
 }
 

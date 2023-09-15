@@ -18,6 +18,7 @@ package org.gradle.jvm.component.internal;
 
 import org.gradle.api.Action;
 import org.gradle.api.Project;
+import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.plugins.JavaResolutionConsistency;
 import org.gradle.api.plugins.jvm.internal.JvmFeatureInternal;
@@ -36,7 +37,7 @@ import org.gradle.api.plugins.jvm.internal.JvmFeatureInternal;
  * that new interface? Does it extend the default implementation class? Is there a way we can avoid
  * Java inheritance?</p>
  */
-public interface JvmSoftwareComponentInternal extends SoftwareComponent {
+public interface JvmSoftwareComponentInternal extends AdhocComponentWithVariants {
 
     // TODO: These with* names are not ideally named. Traditionally, "withers" create a new
     // instance with the value changed, but these mutate the component. However, other names

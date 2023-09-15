@@ -79,8 +79,19 @@ import java.util.function.Supplier;
 /**
  * <p>A {@link org.gradle.api.Plugin} which compiles and tests Java source, and assembles it into a JAR file.</p>
  *
+ * Note that this plugin is automatically applied to most projects that build any JVM language source.  It would be
+ * more appropriately titled the {@code jvm-base} plugin - as it creates the {@link SourceSet}s used by Java, Groovy and Kotlin
+ * plugins.
+ *
+ * The {@link JavaPluginExtension} extension created by this plugin would similarly be more appropriately named the {@code jvm}
+ * extension instead of the current name: {@code java}.  It is used to configure all {@link org.gradle.jvm.component.internal.JvmSoftwareComponentInternal JvmSoftwareComponentInternal}
+ * components.  At present there is only one such component - the {@code java} component added by the
+ * {@link org.gradle.api.plugins.JavaPlugin JavaPlugin} - but multiple components of this type may be created by
+ * these and other plugins in the future.
+ *
  * @see <a href="https://docs.gradle.org/current/userguide/java_plugin.html">Java plugin reference</a>
  */
+@SuppressWarnings("JavadocReference")
 public abstract class JavaBasePlugin implements Plugin<Project> {
     public static final String CHECK_TASK_NAME = LifecycleBasePlugin.CHECK_TASK_NAME;
 

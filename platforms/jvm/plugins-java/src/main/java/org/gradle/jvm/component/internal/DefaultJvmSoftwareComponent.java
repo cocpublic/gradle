@@ -18,22 +18,26 @@ package org.gradle.jvm.component.internal;
 
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.ConsumableConfiguration;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Usage;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.artifacts.configurations.RoleBasedConfigurationContainerInternal;
 import org.gradle.api.internal.plugins.DefaultArtifactPublicationSet;
 import org.gradle.api.internal.project.ProjectInternal;
+import org.gradle.api.internal.tasks.JvmConstants;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePlugin;
 import org.gradle.api.plugins.ExtensionContainer;
-import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.JavaResolutionConsistency;
 import org.gradle.api.plugins.PluginContainer;
+import org.gradle.api.plugins.internal.AbstractJavaResolutionConsistency;
 import org.gradle.api.plugins.internal.JavaConfigurationVariantMapping;
 import org.gradle.api.plugins.internal.JavaPluginHelper;
 import org.gradle.api.plugins.jvm.JvmTestSuite;
@@ -51,7 +55,9 @@ import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.reflect.Instantiator;
+import org.gradle.testing.base.TestingExtension;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.Collections;
 
@@ -66,6 +72,7 @@ public class DefaultJvmSoftwareComponent extends DefaultAdhocSoftwareComponent i
     private static final String SOURCE_ELEMENTS_VARIANT_NAME_SUFFIX = "SourceElements";
 
     private final JvmFeatureInternal mainFeature;
+    @Nullable private final JvmTestSuite testSuite;
 
     @Inject
     public DefaultJvmSoftwareComponent(
@@ -102,6 +109,8 @@ public class DefaultJvmSoftwareComponent extends DefaultAdhocSoftwareComponent i
         // Register the consumable configurations as providing variants for consumption.
         addVariantsFromConfiguration(mainFeature.getApiElementsConfiguration(), new JavaConfigurationVariantMapping("compile", false));
         addVariantsFromConfiguration(mainFeature.getRuntimeElementsConfiguration(), new JavaConfigurationVariantMapping("runtime", false));
+
+        this.testSuite = configureBuiltInTest(project);
     }
 
     private static JavaPluginExtension getJavaPluginExtension(ExtensionContainer extensions) {
@@ -193,68 +202,65 @@ public class DefaultJvmSoftwareComponent extends DefaultAdhocSoftwareComponent i
         return mainFeature;
     }
 
-    @Override
-    public void consistentResolution(Action<? super JavaResolutionConsistency> action, Project project) {
-        action.execute(new DefaultJavaResolutionConsistency(project, project.getExtensions().getByType(SourceSetContainer.class), project.getConfigurations()));
+    @Nullable
+    public JvmTestSuite getTestSuite() {
+        return testSuite;
     }
 
-    private static class DefaultJavaResolutionConsistency implements JavaResolutionConsistency {
-        private final Configuration mainCompileClasspath;
-        private final Configuration mainRuntimeClasspath;
-        private final Configuration testCompileClasspath;
-        private final Configuration testRuntimeClasspath;
-        private final SourceSetContainer sourceSets;
-        private final ConfigurationContainer configurations;
+    @Override
+    public void consistentResolution(Action<? super JavaResolutionConsistency> action, Project project) {
+        action.execute(new DefaultJavaResolutionConsistency(project.getExtensions().getByType(SourceSetContainer.class), project.getConfigurations()));
+    }
 
+    private JvmTestSuite configureBuiltInTest(Project project) {
+        /*
+         * At some point we may want to create a test suite per component, but for now we only want to create one for the `java`
+         * component, in case multiple DefaultJvmSoftwareComponents are created.
+         */
+        TestingExtension testing = project.getExtensions().findByType(TestingExtension.class);
+        if (null != testing && JvmConstants.JAVA_COMPONENT_NAME.equals(getName())) {
+            final NamedDomainObjectProvider<JvmTestSuite> testSuite = testing.getSuites().register(JavaPluginHelper.DEFAULT_TEST_SUITE_NAME, JvmTestSuite.class, suite -> {
+                final SourceSet testSourceSet = suite.getSources();
+                ConfigurationContainer configurations = project.getConfigurations();
+
+                Configuration testImplementationConfiguration = configurations.getByName(testSourceSet.getImplementationConfigurationName());
+                Configuration testRuntimeOnlyConfiguration = configurations.getByName(testSourceSet.getRuntimeOnlyConfigurationName());
+                Configuration testCompileClasspathConfiguration = configurations.getByName(testSourceSet.getCompileClasspathConfigurationName());
+                Configuration testRuntimeClasspathConfiguration = configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName());
+
+                // We cannot reference the main source set lazily (via a callable) since the IntelliJ model builder
+                // relies on the main source set being created before the tests. So, this code here cannot live in the
+                // JvmTestSuitePlugin and must live here, so that we can ensure we register this test suite after we've
+                // created the main source set.
+                final SourceSet mainSourceSet = getMainFeature().getSourceSet();
+                final FileCollection mainSourceSetOutput = mainSourceSet.getOutput();
+                final FileCollection testSourceSetOutput = testSourceSet.getOutput();
+                testSourceSet.setCompileClasspath(project.getObjects().fileCollection().from(mainSourceSetOutput, testCompileClasspathConfiguration));
+                testSourceSet.setRuntimeClasspath(project.getObjects().fileCollection().from(testSourceSetOutput, mainSourceSetOutput, testRuntimeClasspathConfiguration));
+
+                testImplementationConfiguration.extendsFrom(configurations.getByName(mainSourceSet.getImplementationConfigurationName()));
+                testRuntimeOnlyConfiguration.extendsFrom(configurations.getByName(mainSourceSet.getRuntimeOnlyConfigurationName()));
+            });
+
+            // Force the realization of this test suite, targets and task
+            JvmTestSuite suite = testSuite.get();
+
+            project.getTasks().named(JavaBasePlugin.CHECK_TASK_NAME, task -> task.dependsOn(testSuite));
+
+            return suite;
+        } else {
+            return null;
+        }
+    }
+
+    private class DefaultJavaResolutionConsistency extends AbstractJavaResolutionConsistency {
         @Inject
-        public DefaultJavaResolutionConsistency(Project project, SourceSetContainer sourceSets, ConfigurationContainer configurations) {
-            this.sourceSets = sourceSets;
-            this.configurations = configurations;
-
-            if (project.getPlugins().hasPlugin(JavaPlugin.class)) {
-                JvmFeatureInternal mainFeature = JavaPluginHelper.getJavaComponent(project).getMainFeature();
-                JvmTestSuite defaultTestSuite = JavaPluginHelper.getDefaultTestSuite(project);
-
-                mainCompileClasspath = mainFeature.getCompileClasspathConfiguration();
-                mainRuntimeClasspath = mainFeature.getRuntimeClasspathConfiguration();
-                testCompileClasspath = findConfiguration(defaultTestSuite.getSources().getCompileClasspathConfigurationName());
-                testRuntimeClasspath = findConfiguration(defaultTestSuite.getSources().getRuntimeClasspathConfigurationName());
-            } else {
-                SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-                SourceSet testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
-                mainCompileClasspath = findConfiguration(mainSourceSet.getCompileClasspathConfigurationName());
-                mainRuntimeClasspath = findConfiguration(mainSourceSet.getRuntimeClasspathConfigurationName());
-                testCompileClasspath = findConfiguration(testSourceSet.getCompileClasspathConfigurationName());
-                testRuntimeClasspath = findConfiguration(testSourceSet.getRuntimeClasspathConfigurationName());
-            }
-        }
-
-        @Override
-        public void useCompileClasspathVersions() {
-            sourceSets.configureEach(this::applyCompileClasspathConsistency);
-            testCompileClasspath.shouldResolveConsistentlyWith(mainCompileClasspath);
-        }
-
-        @Override
-        public void useRuntimeClasspathVersions() {
-            sourceSets.configureEach(this::applyRuntimeClasspathConsistency);
-            testRuntimeClasspath.shouldResolveConsistentlyWith(mainRuntimeClasspath);
-        }
-
-        private void applyCompileClasspathConsistency(SourceSet sourceSet) {
-            Configuration compileClasspath = findConfiguration(sourceSet.getCompileClasspathConfigurationName());
-            Configuration runtimeClasspath = findConfiguration(sourceSet.getRuntimeClasspathConfigurationName());
-            runtimeClasspath.shouldResolveConsistentlyWith(compileClasspath);
-        }
-
-        private void applyRuntimeClasspathConsistency(SourceSet sourceSet) {
-            Configuration compileClasspath = findConfiguration(sourceSet.getCompileClasspathConfigurationName());
-            Configuration runtimeClasspath = findConfiguration(sourceSet.getRuntimeClasspathConfigurationName());
-            compileClasspath.shouldResolveConsistentlyWith(runtimeClasspath);
-        }
-
-        private Configuration findConfiguration(String configName) {
-            return configurations.getByName(configName);
+        public DefaultJavaResolutionConsistency(SourceSetContainer sourceSets, ConfigurationContainer configurations) {
+            super(mainFeature.getCompileClasspathConfiguration(),
+                mainFeature.getRuntimeClasspathConfiguration(),
+                configurations.getByName(getTestSuite().getSources().getCompileClasspathConfigurationName()),
+                configurations.getByName(getTestSuite().getSources().getRuntimeClasspathConfigurationName()),
+                sourceSets, configurations);
         }
     }
 }

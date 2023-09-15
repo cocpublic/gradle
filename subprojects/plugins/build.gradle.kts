@@ -68,6 +68,8 @@ dependencies {
     integTestImplementation(testFixtures(project(":enterprise-operations")))
     integTestImplementation(testFixtures(project(":language-java")))
     integTestImplementation(testFixtures(project(":model-core")))
+    integTestImplementation(testFixtures(project(":plugins-java")))
+    integTestImplementation(testFixtures(project(":plugins-java-base")))
     integTestImplementation(testFixtures(project(":resources-http")))
 
     testRuntimeOnly(project(":distributions-core")) {

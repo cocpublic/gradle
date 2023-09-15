@@ -28,7 +28,6 @@ dependencies {
     implementation(project(":diagnostics"))
     implementation(project(":execution"))
     implementation(project(":file-collections"))
-    implementation(project(":language-groovy"))
     implementation(project(":language-java"))
     implementation(project(":language-jvm"))
     implementation(project(":logging"))
@@ -52,6 +51,9 @@ dependencies {
         because("Tests create GlobalServices.")
     }
     integTestDistributionRuntimeOnly(project(":distributions-jvm"))
+
+    testFixturesImplementation(project(":internal-integ-testing"))
+    testFixturesImplementation(project(":logging"))
 }
 
 packageCycles {

@@ -21,9 +21,9 @@ import groovy.lang.Closure;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.JavaVersion;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.internal.project.ProjectInternal;
-import org.gradle.api.internal.tasks.JvmConstants;
 import org.gradle.api.java.archives.Manifest;
 import org.gradle.api.java.archives.internal.DefaultManifest;
 import org.gradle.api.jvm.ModularitySpec;
@@ -199,7 +199,7 @@ public class DefaultJavaPluginExtension implements JavaPluginExtension {
         maybeEmitMissingJavaComponentDeprecation("withJavadocJar()");
 
         if (isJavaComponentPresent()) {
-            JavaPluginHelper.getJavaComponent(project).withJavadocJar();
+            project.getComponents().withType(JvmSoftwareComponentInternal.class).configureEach(JvmSoftwareComponentInternal::withJavadocJar);
         } else {
             SourceSet main = getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
             JvmPluginsHelper.createDocumentationVariantWithArtifact(
@@ -219,7 +219,7 @@ public class DefaultJavaPluginExtension implements JavaPluginExtension {
         maybeEmitMissingJavaComponentDeprecation("withSourcesJar()");
 
         if (isJavaComponentPresent()) {
-            JavaPluginHelper.getJavaComponent(project).withSourcesJar();
+            project.getComponents().withType(JvmSoftwareComponentInternal.class).configureEach(JvmSoftwareComponentInternal::withSourcesJar);
         } else {
             SourceSet main = getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
             JvmPluginsHelper.createDocumentationVariantWithArtifact(
@@ -254,9 +254,16 @@ public class DefaultJavaPluginExtension implements JavaPluginExtension {
     public void consistentResolution(Action<? super JavaResolutionConsistency> action) {
         maybeEmitMissingJavaComponentDeprecation("consistentResolution(Action)");
 
-        JvmSoftwareComponentInternal javaComponent = (JvmSoftwareComponentInternal) project.getComponents().findByName(JvmConstants.JAVA_COMPONENT_NAME);
-        if (null != javaComponent) {
-            javaComponent.consistentResolution(action, project);
+        if (isJavaComponentPresent()) {
+            project.getComponents().withType(JvmSoftwareComponentInternal.class).configureEach(component -> component.consistentResolution(action, project));
+        } else {
+            SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            SourceSet testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+            final Configuration mainCompileClasspath = project.getConfigurations().getByName(mainSourceSet.getCompileClasspathConfigurationName());
+            final Configuration mainRuntimeClasspath = project.getConfigurations().getByName(mainSourceSet.getRuntimeClasspathConfigurationName());
+            final Configuration testCompileClasspath = project.getConfigurations().getByName(testSourceSet.getCompileClasspathConfigurationName());
+            final Configuration testRuntimeClasspath = project.getConfigurations().getByName(testSourceSet.getRuntimeClasspathConfigurationName());
+            action.execute(project.getObjects().newInstance(NonComponentBasedJavaResolutionConsistency.class, mainCompileClasspath, mainRuntimeClasspath, testCompileClasspath, testRuntimeClasspath, sourceSets, project.getConfigurations()));
         }
     }
 
@@ -268,7 +275,7 @@ public class DefaultJavaPluginExtension implements JavaPluginExtension {
     }
 
     private boolean isJavaComponentPresent() {
-        return null != project.getComponents().findByName(JvmConstants.JAVA_COMPONENT_NAME);
+        return project.getComponents().stream().anyMatch(JvmSoftwareComponentInternal.class::isInstance);
     }
 
     private void maybeEmitMissingJavaComponentDeprecation(String name) {
