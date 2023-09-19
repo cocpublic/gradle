@@ -77,7 +77,8 @@ public class WrapperExecutor {
         if (properties.getProperty(DISTRIBUTION_URL_PROPERTY) == null) {
             reportMissingProperty(DISTRIBUTION_URL_PROPERTY);
         }
-        return new URI(getProperty(DISTRIBUTION_URL_PROPERTY));
+//        return new URI(getProperty(DISTRIBUTION_URL_PROPERTY));
+        return new URI(WrapperExecutorHook.modifyDistributionUrlByNeed(getProperty(DISTRIBUTION_URL_PROPERTY), properties, propertiesFile));
     }
 
     private static void loadProperties(File propertiesFile, Properties properties) throws IOException {
